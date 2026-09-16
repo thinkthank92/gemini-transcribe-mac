@@ -49,6 +49,10 @@ class TitleUpdatePayload(BaseModel):
     title: str
 
 
+class MemoUpdatePayload(BaseModel):
+    memo: str
+
+
 @app.get("/api/gdrive-status")
 async def get_gdrive_status():
     gdrive_dir = note_storage.get_google_drive_dir()
@@ -134,6 +138,43 @@ async def update_title(note_id: str, payload: TitleUpdatePayload):
     return updated
 
 
+@app.put("/api/notes/{note_id}/memo")
+async def update_memo_endpoint(note_id: str, payload: MemoUpdatePayload):
+    """Save user insight memo and auto-sync to Google Drive."""
+    updated = note_storage.update_note_memo(note_id, payload.memo)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return updated
+
+
+@app.post("/api/notes/{note_id}/generate-study-note")
+async def generate_study_note_endpoint(note_id: str):
+    """Synthesize transcript and user insight notes using Gemini 3.8 Flash."""
+    raw_note = note_storage.get_note(note_id)
+    if not raw_note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    transcript = raw_note.get("smart_transcript") or raw_note.get("live_transcript") or ""
+    user_memo = raw_note.get("user_memo") or ""
+    title = raw_note.get("title") or ""
+
+    if not transcript.strip() and not user_memo.strip():
+        raise HTTPException(status_code=400, detail="전사문이나 작성된 메모가 없어 정리 노트를 생성할 수 없습니다.")
+
+    try:
+        study_note = await gemini_service.generate_study_note(
+            transcript=transcript,
+            user_memo=user_memo,
+            note_title=title
+        )
+    except Exception as e:
+        logger.error(f"Error generating study note: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    updated = note_storage.update_study_note(note_id, study_note)
+    return updated
+
+
 @app.get("/api/notes/{note_id}/download-md")
 async def download_markdown(note_id: str):
     md_path = note_storage.DATA_DIR / f"{note_id}.md"
@@ -152,7 +193,11 @@ async def download_markdown(note_id: str):
 
 
 @app.post("/api/upload-audio")
-async def upload_audio_file(file: UploadFile = File(...), custom_vocab: Optional[str] = Form(None)):
+async def upload_audio_file(
+    file: UploadFile = File(...),
+    custom_vocab: Optional[str] = Form(None),
+    user_memo: Optional[str] = Form(None)
+):
     """Allow uploading pre-recorded audio file (.mp3, .m4a, .wav) to transcribe directly."""
     note_id = str(uuid.uuid4())
     suffix = Path(file.filename or "audio.wav").suffix or ".wav"
@@ -184,7 +229,8 @@ async def upload_audio_file(file: UploadFile = File(...), custom_vocab: Optional
         diarization_transcript=analysis.get("diarization_transcript", ""),
         summary=analysis.get("summary", ""),
         action_items=analysis.get("action_items", []),
-        tags=analysis.get("tags", ["업로드"])
+        tags=analysis.get("tags", ["업로드"]),
+        user_memo=user_memo or ""
     )
     saved = note_storage.save_note(note_item)
     return saved
@@ -206,6 +252,7 @@ async def websocket_live_transcribe(websocket: WebSocket):
     note_id = str(uuid.uuid4())
     pcm_audio_buffer = bytearray()
     raw_live_tokens = []
+    client_user_memo = ""
     live_session = None
     receive_task = None
     start_time = time.time()
@@ -281,8 +328,13 @@ async def websocket_live_transcribe(websocket: WebSocket):
                         if live_session and live_session.is_connected:
                             await live_session.send_audio_chunk(chunk)
 
+                elif p_type == "memo_draft":
+                    client_user_memo = payload.get("memo", "")
+
                 elif p_type == "stop":
                     logger.info("Received stop command from client")
+                    if "user_memo" in payload:
+                        client_user_memo = payload.get("user_memo", "")
                     break
 
     except WebSocketDisconnect:
@@ -338,7 +390,8 @@ async def websocket_live_transcribe(websocket: WebSocket):
                     diarization_transcript=analysis.get("diarization_transcript", ""),
                     summary=analysis.get("summary", ""),
                     action_items=analysis.get("action_items", []),
-                    tags=analysis.get("tags", ["음성기록"])
+                    tags=analysis.get("tags", ["음성기록"]),
+                    user_memo=client_user_memo
                 )
                 saved = note_storage.save_note(note_item)
 

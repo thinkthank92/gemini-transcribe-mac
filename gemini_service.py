@@ -273,10 +273,11 @@ async def process_full_audio(
 """
 
     models_to_try = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
         "gemini-3.5-flash",
-        "gemini-1.5-flash"
+        "gemini-2.5-flash",
+        "gemini-2.0-flash"
     ]
 
     # Create audio part
@@ -350,3 +351,82 @@ async def process_full_audio(
             "action_items": [],
             "tags": ["음성기록"]
         }
+
+
+async def generate_study_note(
+    transcript: str,
+    user_memo: str = "",
+    note_title: str = "",
+    api_key: Optional[str] = None
+) -> str:
+    """
+    Synthesize full transcript and user insight notes into an academic-grade,
+    structured study/meeting note using Gemini 3.8 Flash.
+    """
+    client = get_client(api_key)
+    models_to_try = [
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+    ]
+
+    memo_section = f"""
+[사용자가 현장에서 직접 작성한 실시간 인사이트 메모]
+{user_memo.strip() if user_memo.strip() else "(작성된 사용자 메모 없음)"}
+"""
+
+    prompt = f"""당신은 학술 연구, 대학원 세미나 및 고급 비즈니스 회의록을 체계적으로 구조화하는 수석 학술 어시스턴트입니다.
+아래 제공된 '음성 전사 본문'과 '사용자의 현장 인사이트 메모'를 정밀하게 분석하여, 독자나 연구자가 이 한 편만 읽어도 수업/회의의 전모를 꿰뚫어 볼 수 있는 **'완성형 종합 정리 노트'**를 마크다운(Markdown) 형식으로 작성하십시오.
+
+제목/맥락: {note_title or "강의/회의 기록"}
+
+{memo_section}
+
+[음성 전사 본문]
+{transcript}
+
+---
+
+### [작성 가이드라인]
+1. **서론 및 핵심 테제 (Core Thesis)**:
+   - 본 강의/회의가 다루는 핵심 문제의식과 발표자의 중심 논지(Thesis)를 2~3문장으로 명확히 규정하십시오.
+
+2. **주제별 체계적 상세 정리 (Structured Deep-dive)**:
+   - 내용을 논리적 흐름에 따라 2~4개의 대주제(### 1. ..., ### 2. ...)로 구분하고, 각 항목마다 핵심 논거, 구체적인 사례 및 세부 개념을 꼼꼼하게 정리하십시오.
+   - 단순 나열이 아닌, 개념 간의 인과관계와 대립 구도를 선명히 드러내십시오.
+
+3. **사용자 인사이트 메모와의 융합 분석 (Insight Synthesis)**:
+   - 사용자가 현장에서 적어둔 메모/의문점/아이디어가 있다면, 이를 전사문의 특정 논점과 연결하여 입체적으로 해석하십시오. (예: "사용자가 메모한 [의문/착안점]은 발표자가 언급한 [논점]과 직결되며, 향후 [연구/적용 방향]으로 확장될 수 있음")
+   - 만약 사용자가 적은 메모가 없다면 이 절은 자연스럽게 생략하십시오.
+
+4. **핵심 개념 및 용어 해설 (Key Concepts)**:
+   - 본문에서 다뤄진 주요 학술/전문 용어, 인명, 고유명사 2~4개를 선별하여 핵심 정의와 맥락을 굵은 글씨와 함께 설명하십시오.
+
+5. **심화 연구 질문 및 액션 플랜 (Questions & Action Plan)**:
+   - 후속 연구, 과제, 다음 회의에서 짚고 넘어가야 할 비판적 질문 2~3가지와 구체적인 실천 과제를 도출하십시오.
+
+불필요한 서두 인사나 맺음말("안녕하세요", "이상입니다") 없이, 바로 마크다운 제목(# ...)부터 시작하십시오.
+"""
+
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            logger.info(f"Generating study note with model: {model_name}")
+            response = client.models.generate_content(
+                model=model_name,
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    temperature=0.3
+                )
+            )
+            if response and response.text:
+                return response.text.strip()
+        except Exception as e:
+            logger.warning(f"Error calling {model_name} for study note: {e}")
+            last_error = e
+            continue
+
+    raise RuntimeError(f"Failed to generate study note with Gemini Flash models: {last_error}")
+

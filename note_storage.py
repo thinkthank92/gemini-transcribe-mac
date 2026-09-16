@@ -23,6 +23,8 @@ class NoteItem(BaseModel):
     summary: str = ""
     action_items: List[str] = Field(default_factory=list)
     tags: List[str] = Field(default_factory=list)
+    user_memo: str = ""
+    study_note: str = ""
 
 
 def list_notes() -> List[Dict[str, Any]]:
@@ -38,7 +40,9 @@ def list_notes() -> List[Dict[str, Any]]:
                     "created_at": data.get("created_at", 0),
                     "duration_seconds": data.get("duration_seconds", 0),
                     "tags": data.get("tags", []),
-                    "preview": (data.get("smart_transcript") or data.get("live_transcript") or "")[:120]
+                    "has_memo": bool(data.get("user_memo")),
+                    "has_study_note": bool(data.get("study_note")),
+                    "preview": (data.get("user_memo") or data.get("smart_transcript") or data.get("live_transcript") or "")[:120]
                 })
         except Exception:
             continue
@@ -135,12 +139,39 @@ def generate_markdown_file(note: NoteItem) -> str:
         "",
         "---",
         "",
+    ]
+
+    # 1. User Insight Memo (High priority personal field notes)
+    if note.user_memo and note.user_memo.strip():
+        lines.extend([
+            "## ✍️ 나의 인사이트 메모 (User Memo)",
+            "",
+            note.user_memo.strip(),
+            "",
+            "---",
+            "",
+        ])
+
+    # 2. Gemini 3.8 Flash Comprehensive Study Note (Synthesized structured note)
+    if note.study_note and note.study_note.strip():
+        lines.extend([
+            "## 📚 Gemini 3.8 Flash 종합 정리 노트 (Study Note)",
+            "",
+            note.study_note.strip(),
+            "",
+            "---",
+            "",
+        ])
+
+    # 3. AI Executive Summary
+    lines.extend([
         "## 💡 AI 핵심 요약 (Summary)",
         "",
         note.summary if note.summary else "*(요약 내용 없음)*",
         "",
-    ]
+    ])
 
+    # 4. Action items
     if note.action_items:
         lines.extend([
             "## 📌 주요 액션 아이템 & 키포인트",
@@ -149,6 +180,7 @@ def generate_markdown_file(note: NoteItem) -> str:
             "",
         ])
 
+    # 5. Speaker Diarization
     if note.diarization_transcript:
         lines.extend([
             "## 👥 화자 분리 대화록 (Speaker Diarization)",
@@ -157,6 +189,7 @@ def generate_markdown_file(note: NoteItem) -> str:
             "",
         ])
 
+    # 6. Smart Transcript
     if note.smart_transcript:
         lines.extend([
             "## 📝 정제된 전사문 (Smart Transcript)",
@@ -165,6 +198,7 @@ def generate_markdown_file(note: NoteItem) -> str:
             "",
         ])
 
+    # 7. Raw Log
     if note.live_transcript:
         lines.extend([
             "## 🎙️ 실시간 원본 로그 (Raw Live Stream)",
@@ -178,3 +212,24 @@ def generate_markdown_file(note: NoteItem) -> str:
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(content)
     return content
+
+
+def update_note_memo(note_id: str, memo: str) -> Optional[Dict[str, Any]]:
+    """Update user insight memo for a note and re-sync to Google Drive."""
+    raw = get_note(note_id)
+    if not raw:
+        return None
+    note = NoteItem(**raw)
+    note.user_memo = memo
+    return save_note(note)
+
+
+def update_study_note(note_id: str, study_note: str) -> Optional[Dict[str, Any]]:
+    """Update Gemini study note for a note and re-sync to Google Drive."""
+    raw = get_note(note_id)
+    if not raw:
+        return None
+    note = NoteItem(**raw)
+    note.study_note = study_note
+    return save_note(note)
+

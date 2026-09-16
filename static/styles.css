@@ -598,11 +598,42 @@ body {
   height: 100%;
 }
 
-/* Content Container */
+/* Content Container: Split Workspace */
 .content-container {
   flex: 1;
+  overflow: hidden;
+  padding: 16px 24px;
+}
+
+.content-container.split-workspace {
+  display: grid;
+  grid-template-columns: 1fr 440px;
+  gap: 18px;
+  height: calc(100vh - 175px);
+  min-height: 480px;
+}
+
+.workspace-left-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   overflow-y: auto;
-  padding: 24px;
+  min-width: 0;
+  gap: 16px;
+  padding-right: 4px;
+}
+
+.workspace-right-pane.notepad-pane {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  height: 100%;
+  box-shadow: var(--shadow-sm);
+  min-width: 320px;
+  box-sizing: border-box;
 }
 
 .panel {
@@ -994,4 +1025,295 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+/* ==========================================================================
+   Insight Notepad & Gemini 3.8 Flash Synthesis Styles
+   ========================================================================== */
+
+.notepad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.notepad-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notepad-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.sync-indicator {
+  font-size: 0.72rem;
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.sync-indicator.syncing {
+  color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.notepad-tools {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-tool-small {
+  background-color: var(--bg-body);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-tool-small:hover {
+  color: var(--text-main);
+  border-color: var(--accent-primary);
+  background-color: rgba(121, 82, 255, 0.08);
+}
+
+.notepad-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  min-height: 0;
+}
+
+.user-memo-textarea {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  background-color: var(--bg-body);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  color: var(--text-main);
+  font-family: var(--font-main);
+  font-size: 0.92rem;
+  line-height: 1.7;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.user-memo-textarea:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(121, 82, 255, 0.15);
+}
+
+.user-memo-textarea::placeholder {
+  color: var(--text-faint);
+  line-height: 1.6;
+}
+
+.notepad-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-generate-study-note {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #7952ff 0%, #9d6fff 100%);
+  color: #fff;
+  border: none;
+  padding: 11px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(121, 82, 255, 0.3);
+  transition: transform 0.15s, box-shadow 0.2s, opacity 0.2;
+}
+
+.btn-generate-study-note:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(121, 82, 255, 0.45);
+}
+
+.btn-generate-study-note:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-generate-study-note .btn-icon {
+  font-size: 1.1rem;
+}
+
+.study-spinner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--accent-primary);
+  background-color: rgba(121, 82, 255, 0.08);
+  border: 1px solid rgba(121, 82, 255, 0.2);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(121, 82, 255, 0.25);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Study Note Tab Styling */
+.study-note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.study-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.study-badge {
+  background: linear-gradient(135deg, rgba(121, 82, 255, 0.2) 0%, rgba(157, 111, 255, 0.2) 100%);
+  color: #c4b5fd;
+  border: 1px solid rgba(121, 82, 255, 0.4);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.study-badge-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.empty-study-hint {
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--text-muted);
+  background-color: rgba(255, 255, 255, 0.015);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: 10px;
+}
+
+.empty-study-icon {
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+}
+
+.empty-study-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
+.empty-study-desc {
+  font-size: 0.86rem;
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.study-note-body {
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: var(--text-main);
+  max-height: calc(100vh - 350px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.study-note-body h1 {
+  font-size: 1.35rem;
+  color: #fff;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+}
+
+.study-note-body h2 {
+  font-size: 1.15rem;
+  color: #e2e8f0;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.study-note-body h3 {
+  font-size: 1.02rem;
+  color: #cbd5e1;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.study-note-body p {
+  margin-bottom: 12px;
+}
+
+.study-note-body ul, .study-note-body ol {
+  margin-left: 20px;
+  margin-bottom: 12px;
+}
+
+.study-note-body li {
+  margin-bottom: 6px;
+}
+
+.study-note-body blockquote {
+  border-left: 3px solid var(--accent-primary);
+  background-color: rgba(121, 82, 255, 0.06);
+  padding: 8px 14px;
+  margin: 14px 0;
+  border-radius: 0 6px 6px 0;
+  color: #ddd;
+}
+
+/* Responsive adjustment */
+@media (max-width: 1080px) {
+  .content-container.split-workspace {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .workspace-right-pane.notepad-pane {
+    height: 480px;
+  }
 }
