@@ -40,6 +40,16 @@ const smartTranscriptContent = document.getElementById("smart-transcript-content
 const diarizationTranscriptContent = document.getElementById("diarization-transcript-content");
 const rawTranscriptContent = document.getElementById("raw-transcript-content");
 
+const userMemoEditor = document.getElementById("user-memo-editor");
+const memoSyncIndicator = document.getElementById("memo-sync-indicator");
+const btnInsertTimestamp = document.getElementById("btn-insert-timestamp");
+const btnSaveMemo = document.getElementById("btn-save-memo");
+const btnGenerateStudyNote = document.getElementById("btn-generate-study-note");
+const studyGenerateSpinner = document.getElementById("study-generate-spinner");
+const studyNoteContent = document.getElementById("study-note-content");
+const studyNoteEmpty = document.getElementById("study-note-empty");
+let memoAutosaveTimer = null;
+
 const notesListEl = document.getElementById("notes-list");
 const notesCountEl = document.getElementById("notes-count");
 const noteSearchInput = document.getElementById("note-search");
@@ -136,6 +146,20 @@ function setupEventListeners() {
       requestMicPermissionAndRefresh();
     }
   });
+
+  // Insight Notepad & Study Note
+  if (userMemoEditor) {
+    userMemoEditor.addEventListener("input", handleMemoInput);
+  }
+  if (btnSaveMemo) {
+    btnSaveMemo.addEventListener("click", () => saveActiveNoteMemo(true));
+  }
+  if (btnInsertTimestamp) {
+    btnInsertTimestamp.addEventListener("click", insertTimestampIntoMemo);
+  }
+  if (btnGenerateStudyNote) {
+    btnGenerateStudyNote.addEventListener("click", generateStudyNoteWithGemini);
+  }
 }
 
 // -------------------------------------------------------------
@@ -536,9 +560,10 @@ async function stopRecording() {
   loadingOverlay.classList.remove("hidden");
   loadingText.textContent = "Gemini 3.5 고정밀 스마트 전사 및 AI 요약 중...";
 
-  // Tell server to stop and trigger full post-transcription
+  // Tell server to stop and trigger full post-transcription, passing current user memo
   if (liveWebSocket && liveWebSocket.readyState === WebSocket.OPEN) {
-    liveWebSocket.send(JSON.stringify({ type: "stop" }));
+    const memoText = userMemoEditor ? userMemoEditor.value : "";
+    liveWebSocket.send(JSON.stringify({ type: "stop", user_memo: memoText }));
   }
 
   drawIdleWaveform();
@@ -754,11 +779,162 @@ function displayNoteDetail(note) {
   // Tab 4: Raw Log
   rawTranscriptContent.textContent = note.live_transcript || note.smart_transcript || "";
 
-  // Reset tab to summary
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
-  document.querySelector('.tab-btn[data-tab="tab-summary"]').classList.add("active");
-  document.getElementById("tab-summary").classList.add("active");
+  // Populate User Insight Memo
+  if (userMemoEditor) {
+    userMemoEditor.value = note.user_memo || "";
+    memoSyncIndicator.textContent = "☁️ Google Drive 동기화됨";
+    memoSyncIndicator.classList.remove("syncing");
+  }
+
+  // Populate Gemini 3.8 Flash Study Note
+  if (note.study_note && note.study_note.trim()) {
+    studyNoteContent.innerHTML = marked.parse(note.study_note);
+    studyNoteContent.classList.remove("hidden");
+    studyNoteEmpty.classList.add("hidden");
+    activateTab("tab-study");
+  } else {
+    studyNoteContent.innerHTML = "";
+    studyNoteContent.classList.add("hidden");
+    studyNoteEmpty.classList.remove("hidden");
+    activateTab("tab-summary");
+  }
+}
+
+function activateTab(tabId) {
+  document.querySelectorAll(".tab-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.tab === tabId);
+  });
+  document.querySelectorAll(".tab-pane").forEach(p => {
+    p.classList.toggle("active", p.id === tabId);
+  });
+}
+
+function handleMemoInput() {
+  if (memoSyncIndicator) {
+    memoSyncIndicator.textContent = "☁️ 동기화 중...";
+    memoSyncIndicator.classList.add("syncing");
+  }
+
+  if (memoAutosaveTimer) {
+    clearTimeout(memoAutosaveTimer);
+  }
+
+  memoAutosaveTimer = setTimeout(() => {
+    saveActiveNoteMemo(false);
+  }, 1000);
+}
+
+async function saveActiveNoteMemo(showNotification = false) {
+  if (!userMemoEditor) return;
+  const memoText = userMemoEditor.value;
+
+  // If live recording is in progress, relay draft to backend buffer
+  if (isRecording && liveWebSocket && liveWebSocket.readyState === WebSocket.OPEN) {
+    liveWebSocket.send(JSON.stringify({ type: "memo_draft", memo: memoText }));
+    if (memoSyncIndicator) {
+      memoSyncIndicator.textContent = "☁️ 녹음 세션 임시 저장";
+      memoSyncIndicator.classList.remove("syncing");
+    }
+    return;
+  }
+
+  // If saving to existing active note
+  if (activeNote && activeNote.id) {
+    try {
+      const res = await fetch(`/api/notes/${activeNote.id}/memo`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memo: memoText })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        activeNote.user_memo = memoText;
+        if (memoSyncIndicator) {
+          memoSyncIndicator.textContent = "☁️ Google Drive 동기화됨";
+          memoSyncIndicator.classList.remove("syncing");
+        }
+        if (showNotification) {
+          alert("인사이트 메모가 맥북 로컬 및 구글 드라이브에 동기화되었습니다!");
+        }
+      } else {
+        if (memoSyncIndicator) {
+          memoSyncIndicator.textContent = "⚠️ 동기화 실패";
+        }
+      }
+    } catch (err) {
+      console.error("Failed to save memo:", err);
+      if (memoSyncIndicator) {
+        memoSyncIndicator.textContent = "⚠️ 연결 오류";
+      }
+    }
+  } else {
+    if (memoSyncIndicator) {
+      memoSyncIndicator.textContent = "☁️ 로컬 작성 중";
+      memoSyncIndicator.classList.remove("syncing");
+    }
+  }
+}
+
+function insertTimestampIntoMemo() {
+  if (!userMemoEditor) return;
+  let tag = "";
+  if (isRecording) {
+    const timerText = recordTimer.textContent || "00:00";
+    tag = `[${timerText}] `;
+  } else {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    tag = `[${hh}:${mm}] `;
+  }
+
+  const start = userMemoEditor.selectionStart;
+  const end = userMemoEditor.selectionEnd;
+  const text = userMemoEditor.value;
+  userMemoEditor.value = text.substring(0, start) + tag + text.substring(end);
+  userMemoEditor.selectionStart = userMemoEditor.selectionEnd = start + tag.length;
+  userMemoEditor.focus();
+  handleMemoInput();
+}
+
+async function generateStudyNoteWithGemini() {
+  if (!activeNote || !activeNote.id) {
+    alert("먼저 녹음을 완료하거나 좌측 목록에서 저장된 노트를 선택해 주세요.");
+    return;
+  }
+
+  // Save current memo first
+  await saveActiveNoteMemo(false);
+
+  if (studyGenerateSpinner) studyGenerateSpinner.classList.remove("hidden");
+  if (btnGenerateStudyNote) btnGenerateStudyNote.disabled = true;
+
+  try {
+    const res = await fetch(`/api/notes/${activeNote.id}/generate-study-note`, {
+      method: "POST"
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "종합 정리 노트 생성에 실패했습니다.");
+    }
+
+    const updated = await res.json();
+    activeNote = updated;
+
+    if (updated.study_note) {
+      studyNoteContent.innerHTML = marked.parse(updated.study_note);
+      studyNoteContent.classList.remove("hidden");
+      studyNoteEmpty.classList.add("hidden");
+      activateTab("tab-study");
+      loadNotes();
+    }
+  } catch (err) {
+    alert("Gemini 3.8 Flash 종합 정리 실패: " + err.message);
+  } finally {
+    if (studyGenerateSpinner) studyGenerateSpinner.classList.add("hidden");
+    if (btnGenerateStudyNote) btnGenerateStudyNote.disabled = false;
+  }
 }
 
 function startNewNote() {
@@ -773,6 +949,22 @@ function startNewNote() {
   activeNoteCalendarBadge.classList.add("hidden");
   recordTimer.textContent = "00:00";
   recordStatusLabel.textContent = "녹음 대기 중";
+
+  if (userMemoEditor) {
+    userMemoEditor.value = "";
+    if (memoSyncIndicator) {
+      memoSyncIndicator.textContent = "☁️ 준비됨";
+      memoSyncIndicator.classList.remove("syncing");
+    }
+  }
+  if (studyNoteContent) {
+    studyNoteContent.innerHTML = "";
+    studyNoteContent.classList.add("hidden");
+  }
+  if (studyNoteEmpty) {
+    studyNoteEmpty.classList.remove("hidden");
+  }
+  activateTab("tab-summary");
   loadNotes();
 }
 
@@ -837,7 +1029,7 @@ function copyMarkdown() {
   const durationStr = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   const dateStr = new Date(activeNote.created_at * 1000).toLocaleString("ko-KR");
 
-  const md = [
+  const mdParts = [
     `# ${activeNote.title}`,
     `- **일시**: ${dateStr}`,
     `- **녹음 시간**: ${durationStr}`,
@@ -845,6 +1037,17 @@ function copyMarkdown() {
     '',
     '---',
     '',
+  ];
+
+  if (activeNote.user_memo && activeNote.user_memo.trim()) {
+    mdParts.push('## ✍️ 나의 인사이트 메모 (User Memo)', '', activeNote.user_memo.trim(), '', '---', '');
+  }
+
+  if (activeNote.study_note && activeNote.study_note.trim()) {
+    mdParts.push('## 📚 Gemini 3.8 Flash 종합 정리 노트', '', activeNote.study_note.trim(), '', '---', '');
+  }
+
+  mdParts.push(
     '## 💡 AI 핵심 요약',
     activeNote.summary || '',
     '',
@@ -856,7 +1059,9 @@ function copyMarkdown() {
     '',
     '## 👥 화자 분리 대화록',
     activeNote.diarization_transcript || '',
-  ].join('\n');
+  );
+
+  const md = mdParts.join('\n');
 
   navigator.clipboard.writeText(md).then(() => {
     alert("마크다운이 클립보드에 복사되었습니다! 옵시디언이나 노트에 붙여넣으세요.");
@@ -886,10 +1091,13 @@ async function handleAudioFileUpload(e) {
   if (!file) return;
 
   loadingOverlay.classList.remove("hidden");
-  loadingText.textContent = `오디오 파일(${file.name}) 업로드 및 Gemini 3.5 전사 중...`;
+  loadingText.textContent = `오디오 파일(${file.name}) 업로드 및 Gemini 전사 중...`;
 
   const formData = new FormData();
   formData.append("file", file);
+  if (userMemoEditor && userMemoEditor.value.trim()) {
+    formData.append("user_memo", userMemoEditor.value.trim());
+  }
 
   try {
     const res = await fetch("/api/upload-audio", {
