@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+*.egg-info/
+
+# User Private Data & API Keys
+.env
+.env.*
+!.env.example
+data/
+*.log
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Temporary & Cache
+*.ics
+*.wav
+*.mp3
+*.m4a
+*.tmp
