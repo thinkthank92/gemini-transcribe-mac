@@ -85,8 +85,8 @@ class LiveTranscribeSession:
         """Establish connection with Gemini Live API."""
         models_to_try = [
             "gemini-3.5-transcribe-live",
-            "gemini-2.0-flash-exp",
-            "gemini-2.0-flash"
+            "gemini-3.1-flash-live-preview",
+            "gemini-3.6-flash"
         ]
 
         last_err = None
@@ -273,10 +273,9 @@ async def process_full_audio(
 """
 
     models_to_try = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
+        "gemini-3.6-flash",
         "gemini-3.5-flash",
-        "gemini-1.5-flash"
+        "gemini-3.1-flash-lite"
     ]
 
     # Create audio part
@@ -316,7 +315,7 @@ async def process_full_audio(
         if raw_live_text:
             logger.info("Falling back to text-only processing from raw_live_text")
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-3.6-flash",
                 contents=[prompt_text],
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
