@@ -86,6 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadNotes();
   loadAudioDevices();
   setupEventListeners();
+  setupWorkspaceResizer();
   drawIdleWaveform();
 
   // Listen for device connects/disconnects (e.g., iPhone continuity mic toggled)
@@ -1160,3 +1161,89 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// -------------------------------------------------------------
+// Workspace Resizer (Draggable Splitter between Left & Right Panes)
+// -------------------------------------------------------------
+function setupWorkspaceResizer() {
+  const container = document.getElementById("split-workspace");
+  const leftPane = document.getElementById("workspace-left-pane");
+  const rightPane = document.getElementById("workspace-right-pane");
+  const resizer = document.getElementById("workspace-resizer");
+
+  if (!container || !leftPane || !rightPane || !resizer) return;
+
+  function applySplitRatio(leftPercent) {
+    leftPane.style.flex = `0 0 ${leftPercent}%`;
+    leftPane.style.width = `${leftPercent}%`;
+    rightPane.style.flex = `0 0 ${100 - leftPercent}%`;
+    rightPane.style.width = `${100 - leftPercent}%`;
+  }
+
+  // Restore saved ratio from localStorage (default 50:50)
+  const savedRatio = localStorage.getItem("gemini_transcribe_split_ratio");
+  if (savedRatio) {
+    const ratio = parseFloat(savedRatio);
+    if (!isNaN(ratio) && ratio >= 20 && ratio <= 80) {
+      applySplitRatio(ratio);
+    }
+  }
+
+  let isDragging = false;
+
+  function onPointerDown(e) {
+    if (e.button !== 0) return; // Left mouse only
+    isDragging = true;
+    resizer.classList.add("is-dragging");
+    document.body.classList.add("resizing-active");
+    resizer.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (!isDragging) return;
+    const containerRect = container.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    if (containerWidth <= 0) return;
+
+    const mouseX = e.clientX - containerRect.left;
+    let leftPercent = (mouseX / containerWidth) * 100;
+
+    // Minimum width constraint (min 260px for each side)
+    const minPercent = (260 / containerWidth) * 100;
+    const maxPercent = 100 - minPercent;
+
+    leftPercent = Math.max(minPercent, Math.min(maxPercent, leftPercent));
+    applySplitRatio(leftPercent);
+  }
+
+  function onPointerUp(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    resizer.classList.remove("is-dragging");
+    document.body.classList.remove("resizing-active");
+    try {
+      resizer.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+
+    // Save ratio to localStorage
+    const containerRect = container.getBoundingClientRect();
+    const leftRect = leftPane.getBoundingClientRect();
+    if (containerRect.width > 0) {
+      const ratio = (leftRect.width / containerRect.width) * 100;
+      localStorage.setItem("gemini_transcribe_split_ratio", ratio.toFixed(1));
+    }
+  }
+
+  // Double-click to reset back to 50:50
+  resizer.addEventListener("dblclick", () => {
+    applySplitRatio(50);
+    localStorage.setItem("gemini_transcribe_split_ratio", "50");
+  });
+
+  resizer.addEventListener("pointerdown", onPointerDown);
+  resizer.addEventListener("pointermove", onPointerMove);
+  resizer.addEventListener("pointerup", onPointerUp);
+  resizer.addEventListener("pointercancel", onPointerUp);
+}
+

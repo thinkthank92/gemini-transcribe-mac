@@ -617,31 +617,77 @@ body {
   height: 100%;
 }
 
-/* Content Container: Split Workspace (Equal 50:50 Split) */
+/* Content Container: Split Workspace with Draggable Divider */
 .content-container {
   flex: 1;
   overflow: hidden;
-  padding: 16px 24px;
+  padding: 16px 20px;
 }
 
 .content-container.split-workspace {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
   height: calc(100vh - 175px);
   min-height: 480px;
-}
-
-.workspace-left-pane {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-  min-width: 0;
+  position: relative;
   overflow: hidden;
 }
 
+.workspace-left-pane {
+  flex: 1 1 50%;
+  width: 50%;
+  min-width: 280px;
+  max-width: calc(100% - 280px);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Draggable Resizer Divider */
+.workspace-resizer {
+  width: 14px;
+  margin: 0 3px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  flex-shrink: 0;
+  z-index: 20;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.workspace-resizer:hover,
+.workspace-resizer.is-dragging {
+  background-color: rgba(121, 82, 255, 0.15);
+}
+
+.resizer-handle {
+  width: 4px;
+  height: 40px;
+  border-radius: 2px;
+  background-color: #2b3545;
+  transition: all 0.2s ease;
+}
+
+.workspace-resizer:hover .resizer-handle,
+.workspace-resizer.is-dragging .resizer-handle {
+  background: linear-gradient(180deg, #7952ff 0%, #38bdf8 100%);
+  height: 64px;
+  width: 4px;
+  box-shadow: 0 0 10px rgba(121, 82, 255, 0.7);
+}
+
 .workspace-right-pane.notepad-pane {
+  flex: 1 1 50%;
+  width: 50%;
+  min-width: 280px;
+  max-width: calc(100% - 280px);
   display: flex;
   flex-direction: column;
   background-color: var(--bg-card);
@@ -649,10 +695,15 @@ body {
   border-radius: var(--radius-lg);
   padding: 18px 20px;
   height: 100%;
-  width: 100%;
-  min-width: 0;
   box-shadow: var(--shadow-sm);
   box-sizing: border-box;
+}
+
+/* Global cursor lock during resizing */
+body.resizing-active,
+body.resizing-active * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .panel {
@@ -1413,12 +1464,24 @@ body {
 /* Responsive adjustment */
 @media (max-width: 1080px) {
   .content-container.split-workspace {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     height: auto;
     overflow-y: auto;
   }
 
+  .workspace-left-pane,
+  .workspace-right-pane.notepad-pane {
+    flex: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .workspace-resizer {
+    display: none;
+  }
+
   .workspace-right-pane.notepad-pane {
     height: 480px;
+    margin-top: 16px;
   }
 }

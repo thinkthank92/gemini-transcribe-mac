@@ -99,9 +99,9 @@
       </section>
 
       <!-- Content Area: Split Workspace (Transcripts Left, Insight Notepad Right) -->
-      <section class="content-container split-workspace">
+      <section class="content-container split-workspace" id="split-workspace">
         <!-- Left Pane: Transcripts & AI Summaries -->
-        <div class="workspace-left-pane">
+        <div class="workspace-left-pane" id="workspace-left-pane">
           <!-- Live Stream Panel (Active during recording) -->
           <div id="live-panel" class="panel live-panel">
             <div class="panel-header">
@@ -191,9 +191,13 @@
             </div>
           </div>
         </div>
+        <!-- Draggable Resizer Splitter (Drag to adjust width / Double-click to reset 50:50) -->
+        <div class="workspace-resizer" id="workspace-resizer" title="좌우 드래그: 크기 조절 | 더블클릭: 50:50 균등 초기화">
+          <div class="resizer-handle"></div>
+        </div>
 
-        <!-- Right Pane: Insight Notepad (Equal width 50:50) -->
-        <div class="workspace-right-pane notepad-pane">
+        <!-- Right Pane: Insight Notepad -->
+        <div class="workspace-right-pane notepad-pane" id="workspace-right-pane">
           <div class="notepad-header">
             <div class="notepad-title-group">
               <span class="notepad-title">✍️ 나의 인사이트 메모장</span>
