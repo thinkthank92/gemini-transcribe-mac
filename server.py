@@ -50,7 +50,13 @@ class TitleUpdatePayload(BaseModel):
 
 
 class MemoUpdatePayload(BaseModel):
-    memo: str
+    memo: Optional[str] = None
+    user_memo: Optional[str] = None
+
+    def get_memo_text(self) -> str:
+        if self.memo is not None:
+            return self.memo
+        return self.user_memo or ""
 
 
 @app.get("/api/gdrive-status")
@@ -141,7 +147,8 @@ async def update_title(note_id: str, payload: TitleUpdatePayload):
 @app.put("/api/notes/{note_id}/memo")
 async def update_memo_endpoint(note_id: str, payload: MemoUpdatePayload):
     """Save user insight memo and auto-sync to Google Drive."""
-    updated = note_storage.update_note_memo(note_id, payload.memo)
+    memo_text = payload.get_memo_text()
+    updated = note_storage.update_note_memo(note_id, memo_text)
     if not updated:
         raise HTTPException(status_code=404, detail="Note not found")
     return updated

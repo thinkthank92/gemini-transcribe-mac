@@ -45,6 +45,7 @@ const memoSyncIndicator = document.getElementById("memo-sync-indicator");
 const btnInsertTimestamp = document.getElementById("btn-insert-timestamp");
 const btnSaveMemo = document.getElementById("btn-save-memo");
 const btnGenerateStudyNote = document.getElementById("btn-generate-study-note");
+const btnGenerateStudyNoteTab = document.getElementById("btn-generate-study-note-tab");
 const studyGenerateSpinner = document.getElementById("study-generate-spinner");
 const studyNoteContent = document.getElementById("study-note-content");
 const studyNoteEmpty = document.getElementById("study-note-empty");
@@ -156,6 +157,9 @@ function setupEventListeners() {
   }
   if (btnInsertTimestamp) {
     btnInsertTimestamp.addEventListener("click", insertTimestampIntoMemo);
+  }
+  if (btnGenerateStudyNoteTab) {
+    btnGenerateStudyNoteTab.addEventListener("click", generateStudyNoteWithGemini);
   }
   if (btnGenerateStudyNote) {
     btnGenerateStudyNote.addEventListener("click", generateStudyNoteWithGemini);
@@ -791,12 +795,18 @@ function displayNoteDetail(note) {
     studyNoteContent.innerHTML = marked.parse(note.study_note);
     studyNoteContent.classList.remove("hidden");
     studyNoteEmpty.classList.add("hidden");
+    if (btnGenerateStudyNoteTab) {
+      btnGenerateStudyNoteTab.innerHTML = '<span class="btn-icon">✨</span> Gemini 3.8 Flash 종합 정리 다시 생성';
+    }
     activateTab("tab-study");
   } else {
     studyNoteContent.innerHTML = "";
     studyNoteContent.classList.add("hidden");
     studyNoteEmpty.classList.remove("hidden");
-    activateTab("tab-summary");
+    if (btnGenerateStudyNoteTab) {
+      btnGenerateStudyNoteTab.innerHTML = '<span class="btn-icon">✨</span> Gemini 3.8 Flash 종합 정리 생성';
+    }
+    activateTab("tab-study");
   }
 }
 
@@ -907,6 +917,7 @@ async function generateStudyNoteWithGemini() {
   await saveActiveNoteMemo(false);
 
   if (studyGenerateSpinner) studyGenerateSpinner.classList.remove("hidden");
+  if (btnGenerateStudyNoteTab) btnGenerateStudyNoteTab.disabled = true;
   if (btnGenerateStudyNote) btnGenerateStudyNote.disabled = true;
 
   try {
@@ -926,6 +937,9 @@ async function generateStudyNoteWithGemini() {
       studyNoteContent.innerHTML = marked.parse(updated.study_note);
       studyNoteContent.classList.remove("hidden");
       studyNoteEmpty.classList.add("hidden");
+      if (btnGenerateStudyNoteTab) {
+        btnGenerateStudyNoteTab.innerHTML = '<span class="btn-icon">✨</span> Gemini 3.8 Flash 종합 정리 다시 생성';
+      }
       activateTab("tab-study");
       loadNotes();
     }
@@ -933,6 +947,7 @@ async function generateStudyNoteWithGemini() {
     alert("Gemini 3.8 Flash 종합 정리 실패: " + err.message);
   } finally {
     if (studyGenerateSpinner) studyGenerateSpinner.classList.add("hidden");
+    if (btnGenerateStudyNoteTab) btnGenerateStudyNoteTab.disabled = false;
     if (btnGenerateStudyNote) btnGenerateStudyNote.disabled = false;
   }
 }
@@ -964,7 +979,10 @@ function startNewNote() {
   if (studyNoteEmpty) {
     studyNoteEmpty.classList.remove("hidden");
   }
-  activateTab("tab-summary");
+  if (btnGenerateStudyNoteTab) {
+    btnGenerateStudyNoteTab.innerHTML = '<span class="btn-icon">✨</span> Gemini 3.8 Flash 종합 정리 생성';
+  }
+  activateTab("tab-study");
   loadNotes();
 }
 
@@ -1081,7 +1099,7 @@ function downloadMarkdownFile() {
 function copyPaneText(elementId) {
   const el = document.getElementById(elementId);
   if (!el) return;
-  navigator.clipboard.writeText(el.textContent).then(() => {
+  navigator.clipboard.writeText(el.innerText || el.textContent).then(() => {
     alert("텍스트가 복사되었습니다.");
   });
 }

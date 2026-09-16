@@ -118,7 +118,7 @@
           <!-- Post-Processing Tab Panel (Active after recording / note loaded) -->
           <div id="result-panel" class="panel result-panel hidden">
             <div class="tabs-header">
-              <button class="tab-btn active" data-tab="tab-study">📚 AI 종합 정리 노트</button>
+              <button class="tab-btn active" data-tab="tab-study">📚 Gemini 3.8 Flash 종합 정리</button>
               <button class="tab-btn" data-tab="tab-summary">💡 AI 핵심 요약 & 액션</button>
               <button class="tab-btn" data-tab="tab-smart">📝 정제된 전사문 (Smart)</button>
               <button class="tab-btn" data-tab="tab-diarization">👥 화자 분리 대화록</button>
@@ -128,17 +128,28 @@
             <div class="tabs-content">
               <!-- Tab 0: Comprehensive Study Note (Gemini 3.8 Flash) -->
               <div id="tab-study" class="tab-pane active">
-                <div class="study-note-header">
+                <div class="study-tab-header">
                   <div class="study-badge-group">
                     <span class="study-badge">⚡ Gemini 3.8 Flash 종합 정리</span>
                     <span class="study-badge-sub">강의 전사문 + 사용자 메모 융합</span>
                   </div>
-                  <button class="btn-copy-small" onclick="copyPaneText('study-note-content')">노트 전체 복사</button>
+                  <div class="study-tab-buttons">
+                    <button id="btn-generate-study-note-tab" class="btn-generate-study-note-tab">
+                      <span class="btn-icon">✨</span> Gemini 3.8 Flash 종합 정리 생성
+                    </button>
+                    <button class="btn-copy-small" onclick="copyPaneText('study-note-content')">노트 전체 복사</button>
+                  </div>
                 </div>
+
+                <div id="study-generate-spinner" class="study-spinner hidden">
+                  <span class="mini-spinner"></span>
+                  <span>Gemini 3.8 Flash가 전사문과 메모를 심층 분석하여 종합 노트를 직조 중입니다...</span>
+                </div>
+
                 <div id="study-note-empty" class="empty-study-hint">
                   <div class="empty-study-icon">📖</div>
                   <p class="empty-study-title">아직 생성된 종합 정리 노트가 없습니다.</p>
-                  <p class="empty-study-desc">우측 메모장의 <strong>[✨ Gemini 3.8 Flash 종합 정리 노트 생성]</strong> 버튼을 누르면 전사문과 작성하신 인사이트 메모를 결합하여 구조화된 심층 강의 노트가 완성됩니다.</p>
+                  <p class="empty-study-desc">위의 <strong>[✨ Gemini 3.8 Flash 종합 정리 생성]</strong> 버튼을 누르면 실시간 전사문과 우측 인사이트 메모장의 기록을 융합하여 체계적인 완성형 강의 노트를 만들어냅니다.</p>
                 </div>
                 <div id="study-note-content" class="study-note-body markdown-body hidden"></div>
               </div>
@@ -181,11 +192,11 @@
           </div>
         </div>
 
-        <!-- Right Pane: Insight Notepad (Field notes & Gemini synthesis) -->
+        <!-- Right Pane: Insight Notepad (Equal width 50:50) -->
         <div class="workspace-right-pane notepad-pane">
           <div class="notepad-header">
             <div class="notepad-title-group">
-              <span class="notepad-title">✍️ 나의 인사이트 메모</span>
+              <span class="notepad-title">✍️ 나의 인사이트 메모장</span>
               <span id="memo-sync-indicator" class="sync-indicator">☁️ 저장됨</span>
             </div>
             <div class="notepad-tools">
@@ -194,16 +205,10 @@
             </div>
           </div>
           <div class="notepad-body">
-            <textarea id="user-memo-editor" class="user-memo-textarea" placeholder="수업이나 세미나를 들으며 떠오르는 개인적 통찰, 핵심 키워드, 의문점을 자유롭게 메모하세요.&#10;&#10;• 타이핑 시 맥북 로컬 및 Google Drive에 실시간 자동 동기화됩니다.&#10;• 아래 'Gemini 3.8 Flash' 버튼을 누르면 전사문과 이 메모를 입체적으로 결합해 완전한 종합 노트를 만들어냅니다."></textarea>
+            <textarea id="user-memo-editor" class="user-memo-textarea" placeholder="수업이나 세미나를 들으며 떠오르는 개인적 통찰, 핵심 키워드, 의문점을 자유롭게 메모하세요.&#10;&#10;• 타이핑 시 맥북 로컬 및 Google Drive에 실시간 자동 동기화됩니다.&#10;• 좌측 'Gemini 3.8 Flash 종합 정리' 탭에서 버튼을 누르면 이 메모와 전사문을 결합해 완성형 노트를 생성합니다."></textarea>
           </div>
-          <div class="notepad-footer">
-            <button id="btn-generate-study-note" class="btn-generate-study-note">
-              <span class="btn-icon">✨</span> Gemini 3.8 Flash 종합 정리 노트 생성
-            </button>
-            <div id="study-generate-spinner" class="study-spinner hidden">
-              <span class="mini-spinner"></span>
-              <span>Gemini 3.8 Flash가 전사문과 메모를 심층 분석하여 종합 노트를 직조 중입니다...</span>
-            </div>
+          <div class="notepad-footer-hint">
+            <span>☁️ 구글 드라이브(내 드라이브/Gemini_Transcribe_녹음) 자동 동기화 활성화됨</span>
           </div>
         </div>
       </section>
