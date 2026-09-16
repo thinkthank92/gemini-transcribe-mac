@@ -49,7 +49,7 @@
 
 ### 1. 저장소 클론 및 이동
 ```bash
-git clone https://github.com/YOUR_USERNAME/gemini-transcribe-mac.git
+git clone https://github.com/thinkthank92/gemini-transcribe-mac.git
 cd gemini-transcribe-mac
 ```
 
